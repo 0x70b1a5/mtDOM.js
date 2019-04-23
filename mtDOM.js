@@ -1,6 +1,9 @@
 // MtDOM.js
 // Written by Tobias Merkle 0x70b1a5 in a fit of insanity 2019
 
+Array.prototype.base = null; // Pointer to the array that this array sits in, if any.
+Array.prototype.elevation = 0; // "height" of array (used in maps later).
+
 function makeMountain(el, mtn) {
     var children = Array.from(el && el.childNodes || el || '');
     el.base = mtn;
@@ -11,15 +14,17 @@ function makeMountain(el, mtn) {
 
 function reckonMountainHeight(mtn) {
 
-    // TODO!!
-    // And here we come to the impasse ... You can't set arbitrary properties on Array
-    // I think in order for this to work I need to set .base and .elevation on the Array.prototype
-    // Currently the two props are vanishing, however, and this makes all the numbers incorrect.
-
-    mtn.elevation = (mtn.base ? mtn.base.elevation || 0 : 0) + (mtn.length || 0);
-    return mtn.map ? 
-        mtn.map(function (peak) { return reckonMountainHeight(peak); }) 
-        : mtn;
+    //TODO... This is all trash
+    if (Array.isArray(mtn)) {
+        mtn.elevation = (mtn.base ? mtn.base.elevation || 0 : 0) + (mtn.length || 0);
+        var nextPeak = [];
+        nextPeak.base = mtn;
+        nextPeak.elevation = mtn.elevation;
+        mtn.forEach(function (peak) { nextPeak.push(reckonMountainHeight(peak)); });
+        return nextPeak;
+    }
+    
+    return mtn;
 }
 
 // Array.flatten - thank you, based MDN. https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/flat#Alternative
@@ -29,7 +34,7 @@ function flattenDeep(arr1) {
 
 function findRangeWidth(range) { // :: [Int | Array] | Int
     return range.length && !range.every(function(peak) { return peak == +peak }) ? 
-        flattenDeep(range.map(function (peak) { return findRangeWidth(peak); })) // [Int | Array]
+        flattenDeep(range).length // [Int | Array]
         : range.length ? 
             range.length // [Int]
             : +range || 0; // Int
@@ -42,12 +47,12 @@ function findRangeHeight(range) {
             var nextPeakHeight = 0;
 
             if (Array.isArray(peak)) nextPeakHeight = findRangeHeight(peak);
-            else nextPeakHeight = peak;
+            else nextPeakHeight = peak.elevation;
 
-            max = Math.max(nextPeakHeight, max);
+            +peak.elevation && (max = Math.max(nextPeakHeight, max));
         });
     } else {
-        max = Math.max(range, max);
+        +range.elevation && (max = Math.max(range, max));
     }
     return max;
 }
