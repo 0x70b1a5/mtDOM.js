@@ -43,39 +43,41 @@ function findRangeHeight(range) {
 function generateTopography(mtn, hSize, vSize) {
     var peaksAsHeights = mtn.map(function getPeakPixelHeight(peak, multi) {
         return peak == +peak ? 
-            peak*vSize/(multi ? Math.log(multi) : 1) // Peaks get shorter as they rise. TODO: Infinity
+            peak*vSize/(multi && multi > 2 ? Math.log(multi) : 1) // Peaks get shorter as they rise.
             : peak.map(function (p) { return getPeakPixelHeight(p, (multi || 1) + 1); });
     }); 
-    debugger;
+//     debugger;
     var peaksAsHeightWidthPairs = peaksAsHeights.map(function getPeakPixelWidth(heightOrPeak, divisor) {
         return heightOrPeak == +heightOrPeak ?
-            (hSize/(divisor || 1)).toFixed(2) + "," + heightOrPeak
-            : heightOrPeak.map(function (p) { return getPeakPixelWidth(p, hSize/heightOrPeak.length) })
-                .reduce(function(a, b) { return a + b + " " }, "");
+            ((lastPt || 0) + (hSize/(divisor || 1))).toFixed(2) + "," + heightOrPeak
+            : heightOrPeak.map(function (p) { return getPeakPixelWidth(lastPt || 0, p, hSize/heightOrPeak.length); })
+                .reduce(function(a, b) { return a + b + " "; }, "");
     });
-    debugger;
-    return peaksAsHeightWidthPairs;
+//     debugger;
+    return peaksAsHeightWidthPairs.join(' ');
 }
 
 function drawMountain (mtn) {
-    var $svg = $('<svg style="height: 100vh; width: 100vw; pointer-events: none;" xmlns="http://www.w3.org/2000/svg" version="1.1">');
-    var $polygon = $('<polygon></polygon>');
+    var $svg = document.createElement('svg');
+    $svg.setAttribute('style', "height: 100vh; width: 100vw; pointer-events: none;");
+    $svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    $svg.setAttribute('version', '1.1');
+    var $polygon = document.createElement('polygon');
     var mapStyles = "stroke: #168fdc; stroke-width: 5; fill: #95CFF4; opacity: 0.75;";
-    $polygon.attr('style', mapStyles);
+    $polygon.setAttribute('style', mapStyles);
 
     var mountainWidth = findRangeWidth(mtn);
     var mountainHeight = findRangeHeight(mtn);
     var horizontalUnit = mountainWidth/window.innerWidth;
     var verticalUnit = mountainHeight/window.innerHeight;
-    
-    debugger; 
 
     var points = generateTopography(mtn, horizontalUnit, verticalUnit);
-    $polygon.attr('points', points);
+    debugger;
+    $polygon.setAttribute('points', points);
 
-    $svg.append($('<g></g>').append($polygon));
+    $svg.appendChild(document.createElement('g')).appendChild($polygon);
     
-    return $(document.body).append($svg);
+    return document.body.appendChild($svg);
 }
 
 var mtn = [];
