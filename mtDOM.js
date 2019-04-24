@@ -43,7 +43,7 @@ function generateTopography(mtn) {
 
     var pointArray = mtn.map(function peakToPoint(peak, idx, _, multi, divisor) { // Need to _ Array.prototype.map's param for array
         var elevation = peak.elevation || (peak.base && peak.base.elevation) || 0; 
-        if (elevation > (avg + 3*stdDev)) 
+        if (elevation > (avg + 6*stdDev)) // This magic number is arbitrary, for higher heights increase it.
             elevation /= Math.pow(Math.E, elevation/stdDev);
 
         X += (divisor > 0) ? (idx + 1)/divisor : 1; // For elements in nested arrays, their X hops should be 1/N as wide as elements in the root array
@@ -52,13 +52,14 @@ function generateTopography(mtn) {
 
         return Array.isArray(peak) ? // peak :: Array
             peak.map(function (p, i, a) { return peakToPoint(p, i, a, multi + 1, peak.length); }) 
-            : Math.round(X * 10) + ',' + elevation// /(multi ? Math.pow(Math.E, multi) : 1) // Peaks get shorter as they rise. 
+            : Math.round(X * 10) + ',' + (elevation + mtn.length)// /(multi ? Math.pow(Math.E, multi) : 1) // Peaks get shorter as they rise. 
     }); 
 
-    var stringifiedXYPoints = flattenDeep(pointArray).join(' ');
+    var finalX = Math.round(X * 10) + 10;
+    var stringifiedXYPoints = '0,0 ' + flattenDeep(pointArray).join(' ') + ' ' + finalX + ',0';
 
     return {
-        width: Math.round(X * 10),
+        width: finalX,
         height: Y,
         points: stringifiedXYPoints
     }
@@ -76,22 +77,21 @@ function drawMountain (mtn) {
     
     var $polygon = makeSvgEl('polygon', { 
         points: topography.points, 
-        stroke: '#168fdc', 'stroke-width': '2', 
+        stroke: '#168fdc', 
+        'stroke-width': '2', 
         fill: '#95CFF4',
     });
     var $svg = makeSvgEl('svg', {
         height: window.innerHeight,
-        width: window.innerWidth - 32,
+        width: window.innerWidth,
         version: 1.1,
-        style: 'pointer-events: none; position: absolute; top: 0; left: 0; z-index: 1337;',
+        style: 'pointer-events: none; position: absolute; bottom: 0; left: 0; z-index: 1337;',
         viewBox: '0 0 ' + topography.width + ' ' + topography.height
     });
 
+    // todo ... SVG viewbox should adjust downward instead of scaling polygon upwards
     document.body.appendChild($svg).appendChild($polygon);
-    var yScale = Math.round(window.innerHeight/$polygon.getBBox().height);
-    return $polygon.setAttribute('style', 
-        'transform: rotate(180deg) translateX(-100%) scaleY(' + yScale + ')'
-    );
+    return $polygon.setAttribute('style', 'transform: rotate(180deg) translateX(-100%)');
 }
 
 var mtn = [];
