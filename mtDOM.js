@@ -38,21 +38,24 @@ function generateTopography(mtn) {
     // such that they are a maximum of around 3-4 standard deviations higher than the rest.
     var numericalHeights = flattenDeep(mtn).map(function(flattenedPeak) { return flattenedPeak.elevation || (flattenedPeak.base && flattenedPeak.base.elevation) || 0 });
 
-    var avg = numericalHeights.reduce(function(a, b) { return a + b; }, 0) / numericalHeights.length;
+    var avg = numericalHeights.reduce(function(a, b) { 
+        Y = Math.max(Y, b); 
+        return a + b; 
+    }, 0) / numericalHeights.length;
     var stdDev = Math.sqrt(numericalHeights.reduce(function (a, b) { return a + Math.pow(b - avg, 2) }, 0) / numericalHeights.length);
 
     var pointArray = mtn.map(function peakToPoint(peak, idx, _, multi, divisor) { // Need to _ Array.prototype.map's param for array
-        var elevation = peak.elevation || (peak.base && peak.base.elevation) || 0; 
-        if (elevation > (avg + 6*stdDev)) // This magic number is arbitrary, for higher heights increase it.
-            elevation /= Math.pow(Math.E, elevation/stdDev);
+        var elevation = (peak.elevation || (peak.base && peak.base.elevation) || 0) + mtn.length;
+        // if (elevation > 0) elevation /= 1/(Math.pow(Math.E, 1/elevation)); 
+        // if (elevation > (avg + 6*stdDev)) // This magic number is arbitrary, for higher heights increase it.
+        //     elevation /= Math.pow(Math.E, elevation/stdDev);
 
-        X += (divisor > 0) ? (idx + 1)/divisor : 1; // For elements in nested arrays, their X hops should be 1/N as wide as elements in the root array
+        X += (divisor > 0) ? (idx + 1)/divisor : 1; // For elements in nested arrays, their X hops should be 1/N as wide as elements in the root array.
         multi = multi || 0;
-        Y = Math.max(Y, elevation);
 
         return Array.isArray(peak) ? // peak :: Array
             peak.map(function (p, i, a) { return peakToPoint(p, i, a, multi + 1, peak.length); }) 
-            : Math.round(X * 10) + ',' + (elevation + mtn.length)// /(multi ? Math.pow(Math.E, multi) : 1) // Peaks get shorter as they rise. 
+            : Math.round(X * 10) + ',-' + elevation // negative Y to draw peaks 'northward'.
     }); 
 
     var finalX = Math.round(X * 10) + 10;
@@ -60,7 +63,7 @@ function generateTopography(mtn) {
 
     return {
         width: finalX,
-        height: Y,
+        height: Y, // not Y, because we normalized.
         points: stringifiedXYPoints
     }
 }
@@ -85,13 +88,12 @@ function drawMountain (mtn) {
         height: window.innerHeight,
         width: window.innerWidth,
         version: 1.1,
-        style: 'pointer-events: none; position: absolute; bottom: 0; left: 0; z-index: 1337;',
-        viewBox: '0 0 ' + topography.width + ' ' + topography.height
+        style: 'pointer-events: none; position: fixed; bottom: 0; left: 0; z-index: 1337;',
+        viewBox: '0 ' + (-topography.height) + ' ' + window.innerWidth + ' ' + window.innerHeight
     });
 
     // todo ... SVG viewbox should adjust downward instead of scaling polygon upwards
-    document.body.appendChild($svg).appendChild($polygon);
-    return $polygon.setAttribute('style', 'transform: rotate(180deg) translateX(-100%)');
+    return document.body.appendChild($svg).appendChild($polygon);
 }
 
 var mtn = [];
