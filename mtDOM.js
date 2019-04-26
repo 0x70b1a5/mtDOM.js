@@ -89,12 +89,12 @@ function drawMountain (mtn) {
     
     var $polygon = makeSvgEl('polygon', { 
         points: topography.points, 
-        style: 'animation: loom 10000ms infinite ease-in-out;',
-        fill: '#95CFF4',
+        // style: 'animation: loom 10000ms infinite ease-in-out;',
+        fill: 'url(#grad)',
     })
-    var $styles = document.createElement('style');
-    $styles.textContent = '@keyframes loom { 0%, 100% { fill: #50555a; } 33% { fill: #476c54; } 66%{ fill: #474442; } } } }';
-    document.body.appendChild($styles);
+    // var $styles = document.createElement('style');
+    // $styles.textContent = '@keyframes loom { 0%, 100% { fill: #50555a; } 33% { fill: #476c54; } 66%{ fill: #474442; } } } }';
+    // document.body.appendChild($styles);
     // var $animation = makeSvgEl('animate', {
     //     attributeType: 'CSS',
     //     attributeName: 'fill',
@@ -103,12 +103,7 @@ function drawMountain (mtn) {
     //     linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 50%, rgba(255,0,255,.4) 100%);',
     //     dur: '5s',
     //     repeatCount: 'indefinite'
-    // }).appendChild(makeSvgEl('linearGradient', {
-        
-    // })).appendChild(makeSvgEl('stop', {
-    //     offset: '5%',
-    //     'stop-color': '#F0F'
-    // }));
+    // }).appendChild
     // $polygon.append($animation);
     
     $svg = makeSvgEl('svg', {
@@ -120,14 +115,29 @@ function drawMountain (mtn) {
         viewBox: '0 -' + topography.height + ' ' + topography.width + ' ' + topography.height
     });
 
+    // build SVG gradients 
+    var $defs = makeSvgEl('defs');
+    var $grad = makeSvgEl('linearGradient', { id: 'grad' });
+    var stops = [
+        makeSvgEl('stop', { 'stop-color': '#f1dcc1', offset: '0%' }),
+        makeSvgEl('stop', { 'stop-color': '#3e3633', offset: '25%' }),
+        makeSvgEl('stop', { 'stop-color': '#66716f', offset: '50%' }),
+        makeSvgEl('stop', { 'stop-color': '#466144', offset: '75%' }),
+        makeSvgEl('stop', { 'stop-color': '#58b15b', offset: '100%' })
+    ];
+    stops.forEach(function(stop) { $grad.appendChild(stop); });
+    $defs.appendChild($grad);
+    $svg.appendChild($defs);
+
     window.addEventListener('resize', function(e) {
         if (resizeTaskId)  clearTimeout(resizeTaskId);
         resizeTaskId = setTimeout(function() {
             onResize(e);
         }, delay);
     });
-    // todo ... SVG viewbox should adjust downward instead of scaling polygon upwards
-    return document.body.appendChild($svg).appendChild($polygon);
+    
+    return document.body.appendChild($svg)
+        .appendChild($polygon);
 }
 
 function onResize(e) {
