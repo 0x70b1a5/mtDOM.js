@@ -89,9 +89,12 @@ function drawMountain (mtn) {
     
     var $polygon = makeSvgEl('polygon', { 
         points: topography.points, 
-        style: 'animation: loom 5000ms infinite ease-in-out;',
+        style: 'animation: loom 10000ms infinite ease-in-out;',
         fill: '#95CFF4',
     })
+    var $styles = document.createElement('style');
+    $styles.textContent = '@keyframes loom { 0%, 100% { fill: #50555a; } 33% { fill: #476c54; } 66%{ fill: #474442; } } } }';
+    document.body.appendChild($styles);
     // var $animation = makeSvgEl('animate', {
     //     attributeType: 'CSS',
     //     attributeName: 'fill',
@@ -107,12 +110,13 @@ function drawMountain (mtn) {
     //     'stop-color': '#F0F'
     // }));
     // $polygon.append($animation);
+    
     $svg = makeSvgEl('svg', {
         height: window.innerHeight,
         width: window.innerWidth - 16,
         version: 1.1,
         preserveAspectRatio: 'none',
-        style: 'pointer-events: none; position: fixed; bottom: 0; left: 0; z-index: 1337; shape-rendering: optimizeSpeed; opacity: 0.25; ',
+        style: 'pointer-events: none; position: fixed; bottom: 0; left: 0; z-index: 1337; shape-rendering: optimizeSpeed; opacity: 0.85; ',
         viewBox: '0 -' + topography.height + ' ' + topography.width + ' ' + topography.height
     });
 
