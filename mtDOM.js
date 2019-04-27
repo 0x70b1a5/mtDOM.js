@@ -2,10 +2,12 @@
 // Written by Tobias Merkle in a fit of insanity. He takes no responsibility for what lies beneath.
 // April 2019
 
-var resizeTaskId, $svg, stdDev, avg, sigmoidShortPeaks, bucketPeaks = true,
-    delay = 100,
-    BUCKET_SIZE = 10, 
-    MAX_STANDARD_DEVIATIONS = 0;
+var resizeTaskId, $svg, stdDev, avg, sigmoidShortPeaks, mtn, rawMtn
+    , bucketPeaks = true
+    , delay = 100
+    , BUCKET_SIZE = 10
+    , MAX_STANDARD_DEVIATIONS = 0
+    ;
 
 function makeMountain(el, mtn, baseEl) {
     var children = Array.from(el && el.childNodes || el || '');
@@ -82,6 +84,7 @@ function generateTopography(mtn) {
             bucketMountain.push({ x: i, y: bucketMax });
         };
         pointArray = bucketMountain;
+        X = pointArray.length;
     }
 
     pointArray = [{ x: 0, y: 0 }].concat(pointArray).concat([{ x: X+1, y: 0 }]); 
@@ -137,7 +140,10 @@ function drawMountain (mtn) {
 
     // build SVG gradients 
     var $defs = makeSvgEl('defs');
-    var $grad = makeSvgEl('linearGradient', { id: 'grad' });
+    var $grad = makeSvgEl('linearGradient', { 
+        id: 'grad', 
+        x1: 0, y1: 0, x2: 0, y2: 1,
+    });
     var stops = [
         makeSvgEl('stop', { 'stop-color': '#f1dcc1', offset: '0%' }),
         makeSvgEl('stop', { 'stop-color': '#3e3633', offset: '25%' }),
@@ -160,6 +166,17 @@ function drawMountain (mtn) {
         .appendChild($polygon);
 }
 
+function drawControlPanel() {
+    var $panel = document.createElement('div')
+        $existingPanel = document.getElementById('mtnControlPanel');
+
+    if ($existingPanel) document.removeChild($existingPanel);
+    
+    $panel.id('mtnControlPanel');
+    $panel.style = 'position: absolute; top: 16px; right: 16px; height: 256px; width: 256px; background: radial-gradient(circle at bottom left, #F00, #BA2);'
+    document.appendChild($panel);
+}
+
 function onResize(e) {
     console.log('onresize');
     if (!$svg) return;
@@ -167,6 +184,16 @@ function onResize(e) {
     $svg.setAttribute('width', window.innerWidth);
 }
 
-var mtn = [];
-var rawMtn = makeMountain(document.body, mtn, 1);
-drawMountain(rawMtn);
+// We need to overwrite window.history.pushState in order to watch window.location for changes
+var pushState = history.pushState;
+history.pushState = function () {
+    pushState.apply(history, arguments);
+    cartograph();
+};
+
+function cartograph() {
+    mtn = [];
+    rawMtn = makeMountain(document.body, mtn, 1);
+    drawMountain(rawMtn);
+    drawControlPanel();
+}
