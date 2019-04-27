@@ -2,29 +2,32 @@
 // Written by Tobias Merkle in a fit of insanity. He takes no responsibility for what lies beneath.
 // April 2019
 
-var resizeTaskId, $svg; 
-var delay = 100;
+var resizeTaskId, $svg, stdDev, avg, sigmoidShortPeaks, bucketPeaks = true,
+    delay = 100,
+    BUCKET_SIZE = 10, 
+    MAX_STANDARD_DEVIATIONS = 0;
 
-function makeMountain(el, mtn) {
+function makeMountain(el, mtn, baseEl) {
     var children = Array.from(el && el.childNodes || el || '');
     el.base = mtn;
+    el.elevation = baseEl;
     if (children.length > 0) 
-        return children.map(function (e) { return makeMountain(e, children); });
+        return children.map(function (e) { return makeMountain(e, children, baseEl + 1); });
     return el;
 }
 
-function reckonMountainHeight(mtn, addRawLength) {
-    mtn.elevation = (mtn.base ? mtn.base.elevation || 0 : 0) + (mtn.elevation || mtn.length || 0);
-    if (Array.isArray(mtn)) {
-        var nextPeak = [];
-        nextPeak.base = mtn;
-        nextPeak.elevation = mtn.elevation;
-        mtn.forEach(function (peak) { nextPeak.push(reckonMountainHeight(peak)); });
-        return nextPeak;
-    }
+// function reckonMountainHeight(mtn, addRawLength) {
+//     mtn.elevation = (mtn.base ? mtn.base.elevation || 1 : 0) + (mtn.elevation || (addRawLength && mtn.length || 1));
+//     if (Array.isArray(mtn)) {
+//         var nextPeak = [];
+//         nextPeak.base = mtn;
+//         nextPeak.elevation = mtn.elevation;
+//         mtn.forEach(function (peak) { nextPeak.push(reckonMountainHeight(peak, addRawLength)); });
+//         return nextPeak;
+//     }
     
-    return mtn;
-}
+//     return mtn;
+// }
 
 // Array.flatten - thank you, based MDN. https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/flat#Alternative
 function flattenDeep(arr1) {
@@ -34,44 +37,61 @@ function flattenDeep(arr1) {
 function generateTopography(mtn) {
     var X = 0, // absolute X should increment with every new element.
         Y = 0; // we only need this to find mtn's highest peak.
-    
+
     // Normalize heights to produce a palatable visual for graphs with extreme spikes.
     // Assuming the current point graph has a large number of remote outliers,
     // the goal of this block should be to proportionally reduce the most freakishly tall peaks
     // such that they are a maximum of around 3-4 standard deviations higher than the rest.
     var numericalHeights = flattenDeep(mtn).map(function(flattenedPeak) { return (flattenedPeak.elevation || (flattenedPeak.base && flattenedPeak.base.elevation) || 0) });
 
-    var avg = numericalHeights.reduce(function(a, b) { 
+    avg = numericalHeights.reduce(function(a, b) { 
         return a + b; 
     }, 0) / numericalHeights.length;
-    var stdDev = Math.sqrt(numericalHeights.reduce(function (a, b) { return a + Math.pow(b - avg, 2) }, 0) / numericalHeights.length);
+    stdDev = Math.sqrt(numericalHeights.reduce(function (a, b) { return a + Math.pow(b - avg, 2) }, 0) / numericalHeights.length);
     // var sum = Y;
     // var logSumExp = numericalHeights.map(function (p) { 
     //     sum += Math.pow(Math.E, p - Y); 
     //     return Math.log(sum);
     // });
 
-    var pointArray = mtn.map(function peakToPoint(peak, idx, _, multi, divisor) { // Need to _ Array.prototype.map's param for array
-        var elevation = (peak.elevation || (peak.base && peak.base.elevation) || 0);
-        // Sigmoid! See https://en.wikipedia.org/wiki/Generalised_logistic_function for why we are multiplying by the various values - we really want to "buff up" small values.
-        elevation /= 1/(1 + Math.pow(Math.E, 0.1 * (-elevation)));
-        if (elevation > (avg + 3*stdDev)) // This magic number is arbitrary, for even higher heights increase it.
-            elevation = avg + 4*stdDev;
+    function peakToPoint(peak, idx, _, multi, divisor) { // Need to _ Array.prototype.map's param for array
+        var elevation = ((peak.elevation + (peak.base && peak.base.elevation || 0)) || 1);
+        // Sigmoid! See https://en.wikipedia.org/wiki/Generalised_logistic_function for why we are multiplying by the various values:
+        // Use this to "buff up" small values.
+        if (sigmoidShortPeaks) 
+            elevation /= 1/(1 + Math.pow(Math.E, 0.1 * (-elevation)));
+        if (MAX_STANDARD_DEVIATIONS > 0 && elevation > (avg + MAX_STANDARD_DEVIATIONS*stdDev)) // This magic number is arbitrary, for even higher heights increase it.
+            elevation = avg + (MAX_STANDARD_DEVIATIONS-1)*stdDev;
         
         Y = Math.max(Y, elevation); // obviously, we want to calculate maximum Y here rather than before all these reduction calculations.
         X += (divisor > 0) ? (idx + 1)/divisor : 1; // For elements in nested arrays, their X hops should be 1/N as wide as elements in the root array.
         multi = multi || 0;
 
-        return Array.isArray(peak) ? // peak :: Array
+        return Array.isArray(peak) ? 
             peak.map(function (p, i, a) { return peakToPoint(p, i, a, multi + 1, peak.length); }) 
-            : Math.round(X * 10) + ',-' + Math.round(elevation) // negative Y to draw peaks 'northward'.
-    }); 
+            : { x: +X, y: elevation }; 
+    }  
 
-    var finalX = Math.round(X * 10) + 10;
-    var stringifiedXYPoints = '0,0 ' + flattenDeep(pointArray).join(' ') + ' ' + finalX + ',0';
+    var pointArray = flattenDeep(mtn.map(peakToPoint)); 
+    
+    if (bucketPeaks) {
+        var bucketMountain = [];
+        for (let i = 0; i < pointArray.length; i += BUCKET_SIZE) {
+            let bucketMax = pointArray.slice(i, i + BUCKET_SIZE + 1)
+                .reduce(function(max, point) { return Math.max(max, point.y); }, 0);
+            bucketMountain.push({ x: i, y: bucketMax });
+        };
+        pointArray = bucketMountain;
+    }
+
+    pointArray = [{ x: 0, y: 0 }].concat(pointArray).concat([{ x: X+1, y: 0 }]); 
+
+    var stringifiedXYPoints = pointArray.map(function(point) { 
+        return point.x.toFixed(2) + ',-' + point.y.toFixed(2)  // negative Y to draw peaks 'upward'.
+    }).join(' ')
 
     return {
-        width: finalX,
+        width: pointArray[pointArray.length - 1].x,
         height: Y, 
         points: stringifiedXYPoints
     }
@@ -148,7 +168,5 @@ function onResize(e) {
 }
 
 var mtn = [];
-var rawMtn = makeMountain(document.body, mtn);
-
-mtn = reckonMountainHeight(rawMtn);
-drawMountain(mtn);
+var rawMtn = makeMountain(document.body, mtn, 1);
+drawMountain(rawMtn);
