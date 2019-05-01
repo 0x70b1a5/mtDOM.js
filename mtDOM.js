@@ -3,10 +3,9 @@
 // April 2019
 
 var resizeTaskId, $svg, stdDev, avg, sigmoidShortPeaks, mtn, rawMtn
-    , bucketPeaks = true
     , delay = 100
-    , BUCKET_SIZE = 10
-    , MAX_STANDARD_DEVIATIONS = 0
+    , BUCKET_SIZE
+    , MAX_STANDARD_DEVIATIONS
     ;
 
 function makeMountain(el, mtn, baseEl) {
@@ -76,7 +75,7 @@ function generateTopography(mtn) {
 
     var pointArray = flattenDeep(mtn.map(peakToPoint)); 
     
-    if (bucketPeaks) {
+    if (BUCKET_SIZE > 1) {
         var bucketMountain = [];
         for (let i = 0; i < pointArray.length; i += BUCKET_SIZE) {
             let bucketMax = pointArray.slice(i, i + BUCKET_SIZE + 1)
@@ -172,9 +171,62 @@ function drawControlPanel() {
 
     if ($existingPanel) document.removeChild($existingPanel);
     
-    $panel.id('mtnControlPanel');
-    $panel.style = 'position: absolute; top: 16px; right: 16px; height: 256px; width: 256px; background: radial-gradient(circle at bottom left, #F00, #BA2);'
-    document.appendChild($panel);
+    $panel.setAttribute('id', 'mtnControlPanel');
+    $panel.setAttribute('style', 'position: absolute; top: 16px; left: 16px; width: 256px; \
+        background: radial-gradient(circle at bottom right, #F00, #BA2); \
+        font-size: 12px; font-family: monospace;\
+        padding: 16px; \
+        z-index: 1337; \
+        display: flex; flex-direction: column;');
+    
+    // todo: labels not input textcontent
+
+    var $bktLabel = document.createElement('label');
+    $bktLabel.textContent = 'Group individual peaks into smooth peaks of X buckets. Disabled if X < 1.';
+    var $bucketeer = document.createElement('input');
+    $bucketeer.setAttribute('id', 'bucketSize');
+    $bucketeer.setAttribute('type', 'number');
+    $bucketeer.setAttribute('min', '1');
+
+    var $stdLabel = document.createElement('label');
+    $stdLabel.textContent =  'Trim peaks whose height exceeds X standard deviations of the average height.\
+                                Useful for preventing massive spikes that reduce the relative height of the rest of the graph.\
+                                The trimmed peaks\' new height will be X + 1 standard deviations.\
+                                Disabled if X = 0.';
+    var $standardizr = document.createElement('input');
+    $standardizr.setAttribute('id', 'stdDevs');
+    $standardizr.setAttribute('type', 'number');
+    $standardizr.setAttribute('min', '0');
+
+     var $btbLabel = document.createElement('label');
+    $btbLabel.textContent = 'Boost the relative height of the shortest peaks in order to make them more visible.\
+                                The generalized logarithmic function will be applied to all peak heights.';
+    var $boostTinyBoys = document.createElement('input');
+    $boostTinyBoys.setAttribute('id', 'boostTinyBoys');
+    $boostTinyBoys.setAttribute('type', 'checkbox');
+
+    var panelControls = [
+        document.createElement('button'),
+        document.createElement('button'),
+        document.createElement('button'),
+        document.createElement('button')
+    ];
+
+    $bktLabel.prepend($bucketeer);
+    $stdLabel.prepend($standardizr);
+    $btbLabel.prepend($boostTinyBoys);
+
+    $panel.append($bktLabel, $stdLabel, $btbLabel);
+
+    var $styles = document.createElement('style');
+    $styles.append('#mtnControlPanel input {\
+        width: 32px; \
+        border: none; \
+        background: rgba(255,255,255,0.2); \
+        margin: 8px; \
+    }');
+
+    document.body.append($panel, $styles);
 }
 
 function onResize(e) {
@@ -191,9 +243,23 @@ history.pushState = function () {
     cartograph();
 };
 
+function updateUserPreferences() {
+    var $bucketeer = document.getElementById('bucketSize'),
+        $standardizr = document.getElementById('stdDevs'),
+        $boostTinyBoys = document.getElementById('boostTinyBoys');
+    BUCKET_SIZE = +($bucketeer && $bucketeer.value);
+    MAX_STANDARD_DEVIATIONS = +($standardizr && $standardizr.value);
+    sigmoidShortPeaks = !!($boostTinyBoys && $boostTinyBoys.checked);
+}
+
 function cartograph() {
+    updateUserPreferences();
+
     mtn = [];
     rawMtn = makeMountain(document.body, mtn, 1);
     drawMountain(rawMtn);
+
     drawControlPanel();
 }
+
+cartograph();
