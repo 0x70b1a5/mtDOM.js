@@ -129,6 +129,7 @@ function drawMountain (mtn) {
     // $polygon.append($animation);
     
     $svg = makeSvgEl('svg', {
+        id: 'mtnSvg',
         height: window.innerHeight,
         width: window.innerWidth - 16,
         version: 1.1,
@@ -166,10 +167,7 @@ function drawMountain (mtn) {
 }
 
 function drawControlPanel() {
-    var $panel = document.createElement('div')
-        $existingPanel = document.getElementById('mtnControlPanel');
-
-    if ($existingPanel) document.removeChild($existingPanel);
+    var $panel = document.createElement('div');
     
     $panel.setAttribute('id', 'mtnControlPanel');
     $panel.setAttribute('style', 'position: absolute; top: 16px; left: 16px; width: 256px; \
@@ -179,8 +177,6 @@ function drawControlPanel() {
         z-index: 1337; \
         display: flex; flex-direction: column;');
     
-    // todo: labels not input textcontent
-
     var $bktLabel = document.createElement('label');
     $bktLabel.textContent = 'Group individual peaks into smooth peaks of X buckets. Disabled if X < 1.';
     var $bucketeer = document.createElement('input');
@@ -198,25 +194,35 @@ function drawControlPanel() {
     $standardizr.setAttribute('type', 'number');
     $standardizr.setAttribute('min', '0');
 
-     var $btbLabel = document.createElement('label');
+    var $btbLabel = document.createElement('label');
     $btbLabel.textContent = 'Boost the relative height of the shortest peaks in order to make them more visible.\
                                 The generalized logarithmic function will be applied to all peak heights.';
     var $boostTinyBoys = document.createElement('input');
     $boostTinyBoys.setAttribute('id', 'boostTinyBoys');
     $boostTinyBoys.setAttribute('type', 'checkbox');
 
-    var panelControls = [
-        document.createElement('button'),
-        document.createElement('button'),
-        document.createElement('button'),
-        document.createElement('button')
-    ];
+    var $redrawer = document.createElement('button');
+    $redrawer.setAttribute('type', 'button');
+    $redrawer.textContent = 'Redraw';
+    $redrawer.disabled = true;
+    $redrawer.onclick = function (event) {
+        this.disabled = true;
+        // document.element(document.getElementById('svgMtn').node); .// TODO DELETE ELEMENET!!!
+        cartograph();
+    }
 
-    $bktLabel.prepend($bucketeer);
-    $stdLabel.prepend($standardizr);
-    $btbLabel.prepend($boostTinyBoys);
+    var $inputs = [$bucketeer, $standardizr, $boostTinyBoys];
+    $inputs.forEach(function (control) { 
+        control.onblur = function (event) {
+            $redrawer.disabled = false;    
+        }
+    });
 
-    $panel.append($bktLabel, $stdLabel, $btbLabel);
+    $bktLabel.insertBefore($bucketeer, $bktLabel.firstChild);
+    $stdLabel.insertBefore($standardizr, $stdLabel.firstChild);
+    $btbLabel.insertBefore($boostTinyBoys, $btbLabel.firstChild);
+
+    $panel.append($bktLabel, $stdLabel, $btbLabel, $redrawer);
 
     var $styles = document.createElement('style');
     $styles.append('#mtnControlPanel input {\
@@ -258,8 +264,8 @@ function cartograph() {
     mtn = [];
     rawMtn = makeMountain(document.body, mtn, 1);
     drawMountain(rawMtn);
-
-    drawControlPanel();
 }
+
+drawControlPanel();
 
 cartograph();
