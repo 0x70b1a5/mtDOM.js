@@ -75,15 +75,16 @@ function generateTopography(mtn) {
 
     var pointArray = flattenDeep(mtn.map(peakToPoint)); 
     
+    // bucketize the peaks if necessary
     if (BUCKET_SIZE > 1) {
         var bucketMountain = [];
-        for (let i = 0; i < pointArray.length; i += BUCKET_SIZE) {
-            let bucketMax = pointArray.slice(i, i + BUCKET_SIZE + 1)
+        for (var i = 0; i < pointArray.length; i += BUCKET_SIZE) {
+            let bucketMax = pointArray.slice(i, i + BUCKET_SIZE)
                 .reduce(function(max, point) { return Math.max(max, point.y); }, 0);
             bucketMountain.push({ x: i, y: bucketMax });
         };
         pointArray = bucketMountain;
-        X = pointArray.length;
+        X = i + 1;
     }
 
     pointArray = [{ x: 0, y: 0 }].concat(pointArray).concat([{ x: X+1, y: 0 }]); 
@@ -178,7 +179,7 @@ function drawControlPanel() {
         display: flex; flex-direction: column;');
     
     var $bktLabel = document.createElement('label');
-    $bktLabel.textContent = 'Group individual peaks into smooth peaks of X buckets. Disabled if X < 1.';
+    $bktLabel.textContent = 'Group individual peaks into smooth peaks of X buckets. Disabled if X <= 1.';
     var $bucketeer = document.createElement('input');
     $bucketeer.setAttribute('id', 'bucketSize');
     $bucketeer.setAttribute('type', 'number');
@@ -204,19 +205,10 @@ function drawControlPanel() {
     var $redrawer = document.createElement('button');
     $redrawer.setAttribute('type', 'button');
     $redrawer.textContent = 'Redraw';
-    $redrawer.disabled = true;
     $redrawer.onclick = function (event) {
-        this.disabled = true;
-        // document.element(document.getElementById('svgMtn').node); .// TODO DELETE ELEMENET!!!
+        document.getElementById('mtnSvg').remove(); 
         cartograph();
     }
-
-    var $inputs = [$bucketeer, $standardizr, $boostTinyBoys];
-    $inputs.forEach(function (control) { 
-        control.onblur = function (event) {
-            $redrawer.disabled = false;    
-        }
-    });
 
     $bktLabel.insertBefore($bucketeer, $bktLabel.firstChild);
     $stdLabel.insertBefore($standardizr, $stdLabel.firstChild);
