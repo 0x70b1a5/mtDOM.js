@@ -1,6 +1,6 @@
 // MtDOM.js
 // Written by Tobias Merkle in a fit of insanity. He takes no responsibility for what lies beneath.
-// April 2019
+// April 2019 https://youtu.be/9AxkB_xJcz0?t=700
 
 var resizeTaskId, $svg, stdDev, avg, sigmoidShortPeaks, mtn, rawMtn
     , delay = 100
